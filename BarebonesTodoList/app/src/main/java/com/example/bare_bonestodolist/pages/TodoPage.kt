@@ -47,9 +47,9 @@ import com.example.bare_bonestodolist.ui.theme.BarebonesTodoListTheme
 fun TodoPage(
     confirmAddTask: (String) -> Unit,
     confirmDeleteTask: (Int) -> Unit,
-    confirmAddCompletedTask: (String) -> Unit,
-    todoList: MutableList<String>,
-    completedList: MutableList<String>,
+    confirmAddCompletedTask: (Int) -> Unit,
+    todoList: List<String>,
+    completedList: List<String>,
     lazyListState: LazyListState,
 ) {
     var text by remember { mutableStateOf("") }
@@ -114,10 +114,10 @@ fun TodoPage(
 
 @Composable
 fun ListWidget(
-    todoList: MutableList<String>,
+    todoList: List<String>,
     onConfirmDeleteTask: (Int) -> Unit,
-    onConfirmAddCompletedTask: (String) -> Unit,
-    completedList: MutableList<String>,
+    onConfirmAddCompletedTask: (Int) -> Unit,
+    completedList: List<String>,
     lazyListState: LazyListState
 ) {
 
@@ -151,8 +151,7 @@ fun ListWidget(
                     /* Complete Button */
                     ElevatedButton(
                         onClick = {
-                            onConfirmAddCompletedTask(todoList[it])
-                            onConfirmDeleteTask(it)
+                            onConfirmAddCompletedTask(it)
                         },
                         modifier = Modifier.weight(1f).padding(horizontal = 2.dp),
                     ) {

@@ -34,7 +34,7 @@ import com.example.bare_bonestodolist.ui.theme.BarebonesTodoListTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CompletedPage(completedList: MutableList<String>, confirmDeleteCompletedTask: (Int) -> Unit) {
+fun CompletedPage(completedList: List<String>, confirmDeleteCompletedTask: (Int) -> Unit) {
     var text by remember { mutableStateOf("") }
 
 
@@ -51,7 +51,7 @@ fun CompletedPage(completedList: MutableList<String>, confirmDeleteCompletedTask
 
 @Composable
 fun CompletedListWidget(
-    todoList: MutableList<String>,
+    todoList: List<String>,
     onConfirmDeleteCompletedTask: (Int) -> Unit
 ) {
     LazyColumn(modifier = Modifier.padding(horizontal = 16.dp)) {
@@ -88,6 +88,6 @@ fun CompletedListWidget(
 @Composable
 fun CompletedPagePreview() {
     BarebonesTodoListTheme {
-        CompletedPage(completedList = mutableListOf(), confirmDeleteCompletedTask = {})
+        CompletedPage(completedList = listOf(), confirmDeleteCompletedTask = {})
     }
 }

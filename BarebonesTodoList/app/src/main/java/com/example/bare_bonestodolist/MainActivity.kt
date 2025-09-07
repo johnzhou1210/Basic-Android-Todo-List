@@ -2,11 +2,13 @@ package com.example.bare_bonestodolist
 
 import android.content.Context
 import android.os.Bundle
-import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.combine // This seems unused, consider removing
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.clickable // Ensure this is imported
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.imePadding
@@ -24,12 +26,15 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager // Import LocalFocusManager
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.datastore.core.DataStore
@@ -41,7 +46,7 @@ import com.example.bare_bonestodolist.pages.CompletedPage
 import com.example.bare_bonestodolist.pages.TodoPage
 import com.example.bare_bonestodolist.ui.theme.BarebonesTodoListTheme
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.combine
+// import kotlinx.coroutines.flow.combine // Already imported above
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
@@ -97,66 +102,63 @@ class MainActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun App(context: Context = LocalContext.current) {
-    val todoList = remember { mutableStateListOf<String>() }
-    val completedList = remember { mutableStateListOf<String>() }
     val activeTab = remember { mutableStateOf<String>("todo") }
     val coroutineScope = rememberCoroutineScope()
     val lazyListState = rememberLazyListState()
+    val focusManager = LocalFocusManager.current // Get FocusManager
 
     // Load saved tasks and completed tasks
-    LaunchedEffect(Unit) {
-        TodoDataStore.getTodoList(context).collect { savedTodoList ->
-            todoList.clear()
-            todoList.addAll(savedTodoList)
-        }
-    }
-    LaunchedEffect(Unit) {
-        TodoDataStore.getCompletedList(context).collect { savedCompletedList ->
-            completedList.clear()
-            completedList.addAll(savedCompletedList)
-        }
-    }
+    val todoList by TodoDataStore.getTodoList(context).collectAsState(initial = emptyList())
+    val completedList by TodoDataStore.getCompletedList(context).collectAsState(initial = emptyList())
+
 
     fun confirmAddTask(text: String) {
         if (text.isNotBlank()) {
-            todoList.add(text)
-            Log.d("TodoPage", "FRONTEND added task to todoList")
+            val updated = todoList + text
             coroutineScope.launch {
-                TodoDataStore.setTodoList(context, todoList)
-                lazyListState.animateScrollToItem(todoList.size)
+                TodoDataStore.setTodoList(context, updated)
+                lazyListState.animateScrollToItem(todoList.size - 1)
             }
         }
     }
 
     fun confirmDeleteTask(index: Int) {
-        todoList.removeAt(index)
-        Log.d("TodoPage", "FRONTEND removed task from todoList")
+        val updated = todoList.toMutableList().apply { removeAt(index) }
         coroutineScope.launch {
-            TodoDataStore.setTodoList(context, todoList)
+            TodoDataStore.setTodoList(context, updated)
         }
     }
 
-    fun confirmAddCompletedTask(text: String) {
-        completedList.add(text)
-        Log.d("TodoPage", "FRONTEND added task to completedList")
+    fun confirmAddCompletedTask(index: Int) {
+        val task = todoList[index]
+        val updatedTodo = todoList.toMutableList().apply { removeAt(index) }
+        val updatedCompleted = completedList + task
+
         coroutineScope.launch {
-            TodoDataStore.setCompletedList(context, completedList)
+            TodoDataStore.setTodoList(context, updatedTodo)
+            TodoDataStore.setCompletedList(context, updatedCompleted)
+
         }
     }
 
     fun confirmDeleteCompletedTask(index: Int) {
-        completedList.removeAt(index)
-        Log.d("TodoPage", "FRONTEND removed task from completedList")
+        val updatedCompleted = completedList.toMutableList().apply { removeAt(index) }
         coroutineScope.launch {
-            TodoDataStore.setCompletedList(context, completedList)
+            TodoDataStore.setCompletedList(context, updatedCompleted)
         }
     }
 
-    Scaffold(modifier = Modifier,
+    Scaffold(
+        modifier = Modifier.clickable( // Your existing clickable
+            interactionSource = remember { MutableInteractionSource() },
+            indication = null,
+            onClick = { // Add the onClick lambda here
+                focusManager.clearFocus()
+            }
+        ),
         topBar = {
             TopAppBar(title = {
                 Text(text = if (activeTab.value == "todo") "Todo" else "Completed", modifier = Modifier.padding(horizontal = 4.dp))
-
             })
         },
         bottomBar = {
@@ -172,25 +174,36 @@ fun App(context: Context = LocalContext.current) {
             )
         }
     ) { innerPadding ->
-        Column(modifier = Modifier.padding(innerPadding).padding(start = 4.dp).consumeWindowInsets(innerPadding).imePadding()) {
+        Column(
+            modifier = Modifier
+                .padding(innerPadding)
+                .padding(start = 4.dp)
+                .consumeWindowInsets(innerPadding)
+                .imePadding()
+                .clickable( // Add clickable to the Column as well
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = {
+                        focusManager.clearFocus()
+                    }
+                )
+        ) {
             if (activeTab.value == "todo") {
                 TodoPage(
                     confirmAddTask = { confirmAddTask(it) },
                     confirmDeleteTask = { confirmDeleteTask(it) },
                     confirmAddCompletedTask = { confirmAddCompletedTask(it) },
-                    todoList,
-                    completedList,
-                    lazyListState
+                    todoList = todoList,
+                    completedList = completedList,
+                    lazyListState = lazyListState
                 )
             } else if (activeTab.value == "completed") {
                 CompletedPage(
-                    completedList,
+                    completedList = completedList,
                     confirmDeleteCompletedTask = { confirmDeleteCompletedTask(it) })
             }
         }
     }
-
-
 }
 
 @Preview(showBackground = true)
